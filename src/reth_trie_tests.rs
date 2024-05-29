@@ -1,7 +1,6 @@
 use crate::ProofHashCalculator;
 use alloy_primitives::{address, keccak256, private::proptest, Address, B256, U256};
 use eyre::Context;
-use lazy_static::lazy_static;
 use proptest::{
     prelude::*,
     test_runner::{Config, TestError, TestRunner},
@@ -11,39 +10,28 @@ use reth::providers::{StateProvider, StateProviderBox};
 use reth::revm::db::{AccountStatus, BundleAccount, StorageWithOriginalValues};
 use reth::{
     primitives::{Account, StorageEntry, KECCAK_EMPTY},
-    providers::{
-        providers::ConsistentDbView, test_utils::create_test_provider_factory, ProviderFactory,
-    },
+    providers::{test_utils::create_test_provider_factory, ProviderFactory},
     revm::primitives::AccountInfo,
-    tasks::pool::BlockingTaskPool,
 };
 use reth_db::{
     database::Database,
     tables,
     transaction::{DbTx, DbTxMut},
 };
+use reth_trie::hashed_cursor::HashedPostStateCursorFactory;
 use reth_trie::{HashedPostState, StateRoot};
-use reth_trie_parallel::async_root::AsyncStateRoot;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-lazy_static! {
-    static ref TASK_POOL: BlockingTaskPool =
-        BlockingTaskPool::build().expect("Blocking task pool creation");
-}
-
-fn reference_root_hash_calc<DB: Database + Clone + 'static>(
-    provider_factory: ProviderFactory<DB>,
+fn reference_root_hash_calc<TX: DbTx + 'static>(
+    tx: TX,
     hashed_post_state: HashedPostState,
 ) -> eyre::Result<B256> {
-    let consistent_db_view = ConsistentDbView::new_with_latest_tip(provider_factory)?;
-
-    let async_root_calculator =
-        AsyncStateRoot::new(consistent_db_view, TASK_POOL.clone(), hashed_post_state);
-    let (root, _updates) =
-        futures::executor::block_on(async_root_calculator.incremental_root_with_updates())?;
-
-    Ok(root)
+    let sorted_post_state = hashed_post_state.into_sorted();
+    let hashed_cursor_factory = HashedPostStateCursorFactory::new(&tx, &sorted_post_state);
+    Ok(StateRoot::from_tx(&tx)
+        .with_hashed_cursor_factory(hashed_cursor_factory)
+        .root()?)
 }
 
 fn caching_root_hash_calc(
@@ -318,8 +306,8 @@ fn compare_results_for_state<DB: Database + Clone + 'static>(
         .collect();
     let hashed_post_state = HashedPostState::from_bundle_state(bundle_state.iter());
 
-    let expected_hash =
-        reference_root_hash_calc(provider_factory.clone(), hashed_post_state.clone()).unwrap();
+    let tx = provider_factory.db_ref().tx()?;
+    let expected_hash = reference_root_hash_calc(tx, hashed_post_state.clone()).unwrap();
     dbg!(expected_hash);
 
     let got_hash = caching_root_hash_calc(&provider_factory.latest()?, &bundle_state).unwrap();

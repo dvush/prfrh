@@ -7,7 +7,6 @@ use reth::primitives::constants::EMPTY_ROOT_HASH;
 use reth::primitives::revm::compat::into_reth_acc;
 use reth::primitives::trie::nodes::{TrieNode, CHILD_INDEX_RANGE};
 use reth::primitives::trie::{AccountProof, HashBuilder, Nibbles, TrieAccount};
-use reth::providers::BundleStateWithReceipts;
 use reth::revm::db::BundleAccount;
 use reth_trie::prefix_set::TriePrefixSets;
 use reth_trie::{HashedPostState, HashedStorage};
