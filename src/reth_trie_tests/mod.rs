@@ -1,3 +1,4 @@
+use crate::reth_trie_tests::utils::pretty_print_proof;
 use crate::ProofHashCalculator;
 use alloy_primitives::{address, keccak256, private::proptest, Address, B256, U256};
 use eyre::Context;
@@ -18,6 +19,8 @@ use reth_db::{
 use reth_trie::hashed_cursor::HashedPostStateCursorFactory;
 use reth_trie::{HashedPostState, StateRoot};
 use std::collections::HashMap;
+
+pub mod utils;
 
 fn reference_root_hash_calc<TX: DbTx + 'static>(
     tx: TX,
@@ -40,6 +43,7 @@ fn caching_root_hash_calc(
     let mut proofs = HashMap::new();
     for (address, keys) in proof_hash_calc.get_proofs_to_fetch() {
         let proof = state_provider.proof(address, &keys)?;
+        pretty_print_proof(&proof);
         proofs.insert(address, proof);
     }
 

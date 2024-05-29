@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod reth_trie_tests;
+pub mod reth_trie_tests;
 
 use alloy_primitives::{keccak256, Address, Bytes, B256};
 use alloy_rlp::{Decodable, Encodable};
