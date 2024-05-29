@@ -6018,8 +6018,6 @@ dependencies = [
  "reth",
  "reth-db",
  "reth-trie",
- "serde",
- "serde_json",
 ]
 
 [[package]]

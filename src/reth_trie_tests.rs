@@ -17,7 +17,6 @@ use reth_db::{
 };
 use reth_trie::hashed_cursor::HashedPostStateCursorFactory;
 use reth_trie::{HashedPostState, StateRoot};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 fn reference_root_hash_calc<TX: DbTx + 'static>(
@@ -106,23 +105,12 @@ fn prepare_trie_initial_state<DB: Database>(
     Ok(())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct AccountWithChangeSeed {
-    address: Address,
-    initial_balance: Option<u64>,
-    final_balance: Option<u64>,
-    initial_storage: Vec<(u64, u64)>,
-    new_storage: Vec<(u64, u64)>,
-}
-
 #[derive(Debug)]
 struct AccountWithChange {
     address: Address,
     initial_state: Option<AccountState>,
     changed_state: Option<AccountState>,
     account_status: AccountStatus,
-
-    seed_data: Option<AccountWithChangeSeed>,
 }
 
 impl AccountWithChange {
@@ -132,26 +120,7 @@ impl AccountWithChange {
             initial_state: None,
             changed_state: None,
             account_status: AccountStatus::LoadedNotExisting,
-            seed_data: None,
         }
-    }
-
-    fn from_seed(seed: AccountWithChangeSeed) -> Self {
-        let mut account = AccountWithChange::new(seed.address);
-        account.seed_data = Some(seed.clone());
-        if let Some(initial_balance) = seed.initial_balance {
-            account = account.with_initial_state(initial_balance, 0, None);
-        }
-        if let Some(final_balance) = seed.final_balance {
-            account = account.with_balance_change(final_balance);
-        }
-        if !seed.initial_storage.is_empty() {
-            account = account.with_initial_storage(seed.initial_storage)
-        }
-        if !seed.new_storage.is_empty() {
-            account = account.with_storage_change(seed.new_storage)
-        }
-        account.with_account_status(AccountStatus::Changed)
     }
 
     fn with_initial_state(mut self, balance: u64, nonce: u64, bytecode_hash: Option<B256>) -> Self {
@@ -304,11 +273,11 @@ fn compare_results_for_state<DB: Database + Clone + 'static>(
     let hashed_post_state = HashedPostState::from_bundle_state(bundle_state.iter());
 
     let tx = provider_factory.db_ref().tx()?;
-    let expected_hash = reference_root_hash_calc(tx, hashed_post_state.clone()).unwrap();
-    dbg!(expected_hash);
+    let expected_hash = reference_root_hash_calc(tx, hashed_post_state.clone())?;
 
-    let got_hash = caching_root_hash_calc(&provider_factory.latest()?, &bundle_state).unwrap();
-    dbg!(got_hash);
+    let got_hash = caching_root_hash_calc(&provider_factory.latest()?, &bundle_state)?;
+
+    assert_eq!(expected_hash, got_hash);
     Ok(())
 }
 
@@ -481,14 +450,20 @@ fn random_account() -> BoxedStrategy<AccountWithChange> {
     )
         .prop_map(
             |(initial_balance, final_balance, address, initial_storage, new_storage)| {
-                let seed = AccountWithChangeSeed {
-                    address,
-                    initial_balance,
-                    final_balance,
-                    initial_storage,
-                    new_storage,
-                };
-                AccountWithChange::from_seed(seed)
+                let mut account = AccountWithChange::new(address);
+                if let Some(initial_balance) = initial_balance {
+                    account = account.with_initial_state(initial_balance, 0, None);
+                }
+                if let Some(final_balance) = final_balance {
+                    account = account.with_balance_change(final_balance);
+                }
+                if !initial_storage.is_empty() {
+                    account = account.with_initial_storage(initial_storage)
+                }
+                if !new_storage.is_empty() {
+                    account = account.with_storage_change(new_storage)
+                }
+                account.with_account_status(AccountStatus::Changed)
             },
         )
         .boxed()
