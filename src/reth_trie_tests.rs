@@ -1,10 +1,7 @@
 use crate::ProofHashCalculator;
 use alloy_primitives::{address, keccak256, private::proptest, Address, B256, U256};
 use eyre::Context;
-use proptest::{
-    prelude::*,
-    test_runner::{Config, TestError, TestRunner},
-};
+use proptest::prelude::*;
 use reth::primitives::revm_primitives::StorageSlot;
 use reth::providers::{StateProvider, StateProviderBox};
 use reth::revm::db::{AccountStatus, BundleAccount, StorageWithOriginalValues};
@@ -497,24 +494,10 @@ fn random_account() -> BoxedStrategy<AccountWithChange> {
         .boxed()
 }
 
-#[test]
-fn random_account_test() {
-    let config = Config::default();
-    let mut runner = TestRunner::new(config);
-    match runner.run(&random_account(), move |account| {
+proptest! {
+    #[test]
+    fn proptest_root_hash_changed_account(account in random_account()) {
         let provider_factory = create_test_provider_factory();
         compare_results_for_state(&[account], provider_factory).unwrap();
-        Ok(())
-    }) {
-        Ok(_) => {}
-        Err(TestError::Abort(reason)) => {
-            panic!("Test aborted: {}", reason);
-        }
-        Err(TestError::Fail(_reason, data)) => {
-            panic!(
-                "Test failed. minimal failing input seed: {}",
-                serde_json::to_string_pretty(&data.seed_data).unwrap()
-            );
-        }
     }
 }

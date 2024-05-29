@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 9d33013ac074b3a129e712af9290790432b8563571a200365bc299ec441e2a04 # shrinks to account = AccountWithChange { address: 0x0000000000000000000000000000000000000000, initial_state: Some(AccountState { address: 0x0000000000000000000000000000000000000000, account: Account { nonce: 0, balance: 0x0_U256, bytecode_hash: None }, storage: {0x0000000000000000000000000000000000000000000000000000000000000000: 0x0000000000000000000000000000000000000000000000000000000000000001_U256} }), changed_state: Some(AccountState { address: 0x0000000000000000000000000000000000000000, account: Account { nonce: 0, balance: 0x0_U256, bytecode_hash: None }, storage: {0x0000000000000000000000000000000000000000000000000000000000000000: 0x0000000000000000000000000000000000000000000000000000000000000001_U256, 0x0000000000000000000000000000000000000000000000000000000000000001: 0x0_U256} }), account_status: Changed, seed_data: Some(AccountWithChangeSeed { address: 0x0000000000000000000000000000000000000000, initial_balance: None, final_balance: None, initial_storage: [(0, 1)], new_storage: [(0, 1), (1, 0)] }) }
