@@ -158,13 +158,19 @@ impl ProofHashCalculator {
                 .accounts
                 .get(&hashed_address)
                 .unwrap()
-                .unwrap_or_default();
-            let encoded = if account.is_empty() && storage_root == EMPTY_ROOT_HASH {
-                None
-            } else {
-                rlp_buf.clear();
-                TrieAccount::from((account, storage_root)).encode(&mut rlp_buf);
-                Some(rlp_buf.clone())
+                .clone();
+            let encoded = match account {
+                // if account is empty its remove from the trie
+                None => None,
+                Some(account) => {
+                    if account.is_empty() && storage_root == EMPTY_ROOT_HASH {
+                        None
+                    } else {
+                        rlp_buf.clear();
+                        TrieAccount::from((account, storage_root)).encode(&mut rlp_buf);
+                        Some(rlp_buf.clone())
+                    }
+                }
             };
 
             update_hash_builder_from_proof(

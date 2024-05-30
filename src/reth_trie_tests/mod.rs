@@ -1,3 +1,4 @@
+use crate::reth_trie_tests::utils::pretty_print_proof;
 use crate::ProofHashCalculator;
 use alloy_primitives::{address, keccak256, private::proptest, Address, B256, U256};
 use eyre::Context;
@@ -42,7 +43,7 @@ fn caching_root_hash_calc(
     let mut proofs = HashMap::new();
     for (address, keys) in proof_hash_calc.get_proofs_to_fetch() {
         let proof = state_provider.proof(address, &keys)?;
-        // pretty_print_proof(&proof);
+        pretty_print_proof(&proof);
         proofs.insert(address, proof);
     }
 
@@ -439,13 +440,18 @@ fn panicking_test_3() {
 }
 
 #[test]
-fn test_no_changes() {
+fn failing_test_01() {
     let provider_factory = create_test_provider_factory();
 
-    let account = AccountWithChange::new(address!("0000000000000000000000000000000000000001"))
+    let account = AccountWithChange::new(address!("0000000000000000000000000000000000000000"))
         .with_initial_state(1, 0, None)
-        .with_initial_storage(vec![(1, 1)])
-        .with_account_status(AccountStatus::Loaded);
+        .with_initial_storage(vec![
+            (0x65cdf8376e72a0fc, 1),
+            (0xdce6a58534b10088, 1),
+            (0xea40f3fa1f3284a6, 1),
+        ])
+        .with_storage_change(vec![(0x1990eee354d7cc, 1)])
+        .with_account_status(AccountStatus::Changed);
 
     compare_results_for_state(&[account], provider_factory).unwrap();
 }
