@@ -289,7 +289,7 @@ fn test_root_hash_changed_account() {
     let provider_factory = create_test_provider_factory();
 
     let account = AccountWithChange::new(address!("0000000000000000000000000000000000000001"))
-        .with_initial_state(0, 0, None)
+        .with_initial_state(1, 0, None)
         .with_initial_storage(vec![(5, 7)])
         .with_balance_change(10)
         .with_nonce_change(2)
@@ -304,7 +304,7 @@ fn test_root_hash_destroyed_account() {
     let provider_factory = create_test_provider_factory();
 
     let account = AccountWithChange::new(address!("0000000000000000000000000000000000000001"))
-        .with_initial_state(0, 0, None)
+        .with_initial_state(1, 0, None)
         .with_initial_storage(vec![(5, 7)])
         .with_account_status(AccountStatus::Destroyed);
 
@@ -316,7 +316,7 @@ fn test_root_hash_changed_storage() {
     let provider_factory = create_test_provider_factory();
 
     let account = AccountWithChange::new(address!("0000000000000000000000000000000000000001"))
-        .with_initial_state(0, 0, None)
+        .with_initial_state(1, 0, None)
         .with_initial_storage(vec![(5, 7)])
         .with_storage_change(vec![(5, 8)])
         .with_account_status(AccountStatus::Changed);
@@ -329,7 +329,7 @@ fn test_root_hash_inserted_storage() {
     let provider_factory = create_test_provider_factory();
 
     let account = AccountWithChange::new(address!("0000000000000000000000000000000000000001"))
-        .with_initial_state(0, 0, None)
+        .with_initial_state(1, 0, None)
         .with_storage_change(vec![(6, 8)])
         .with_account_status(AccountStatus::Changed);
 
@@ -341,7 +341,7 @@ fn test_root_hash_inserted_storage_when_storage_exists_ok() {
     let provider_factory = create_test_provider_factory();
 
     let account = AccountWithChange::new(address!("0000000000000000000000000000000000000001"))
-        .with_initial_state(0, 0, None)
+        .with_initial_state(1, 0, None)
         .with_initial_storage(vec![(5, 7)])
         .with_storage_change(vec![(6, 8)])
         .with_account_status(AccountStatus::Changed);
@@ -354,7 +354,7 @@ fn test_root_hash_inserted_storage_when_storage_exists() {
     let provider_factory = create_test_provider_factory();
 
     let account = AccountWithChange::new(address!("0000000000000000000000000000000000000001"))
-        .with_initial_state(0, 0, None)
+        .with_initial_state(1, 0, None)
         .with_initial_storage(vec![(5, 7)])
         .with_storage_change(vec![(5, 8), (6, 8)])
         .with_account_status(AccountStatus::Changed);
@@ -375,6 +375,7 @@ fn test_root_hash_empty_trie_new_account() {
 }
 
 #[test]
+#[ignore] // there must be no empty accounts in the trie
 fn test_root_hash_empty_trie_new_empty_account() {
     let provider_factory = create_test_provider_factory();
 
@@ -392,7 +393,7 @@ fn test_root_hash_changed_accounts() {
     let mut accounts = Vec::new();
     accounts.push(
         AccountWithChange::new(address!("0000000000000000000000000000000000000001"))
-            .with_initial_state(0, 0, None)
+            .with_initial_state(1, 0, None)
             .with_initial_storage(vec![(5, 7)])
             .with_balance_change(10)
             .with_nonce_change(2)
@@ -416,7 +417,7 @@ fn panicking_test_2() {
     let provider_factory = create_test_provider_factory();
 
     let account = AccountWithChange::new(address!("0000000000000000000000000000000000000001"))
-        .with_initial_state(0, 0, None)
+        .with_initial_state(1, 0, None)
         .with_initial_storage(vec![(0, 1)])
         .with_storage_change(vec![(0, 2), (1, 3)])
         .with_account_status(AccountStatus::Changed);
@@ -429,10 +430,22 @@ fn panicking_test_3() {
     let provider_factory = create_test_provider_factory();
 
     let account = AccountWithChange::new(address!("0000000000000000000000000000000000000001"))
-        .with_initial_state(0, 0, None)
+        .with_initial_state(1, 0, None)
         .with_initial_storage(vec![(432261123656, 1)])
         .with_storage_change(vec![(13528446866928600, 2), (1176412350699727397, 3)])
         .with_account_status(AccountStatus::Changed);
+
+    compare_results_for_state(&[account], provider_factory).unwrap();
+}
+
+#[test]
+fn test_no_changes() {
+    let provider_factory = create_test_provider_factory();
+
+    let account = AccountWithChange::new(address!("0000000000000000000000000000000000000001"))
+        .with_initial_state(1, 0, None)
+        .with_initial_storage(vec![(1, 1)])
+        .with_account_status(AccountStatus::Loaded);
 
     compare_results_for_state(&[account], provider_factory).unwrap();
 }
@@ -454,16 +467,25 @@ fn random_account() -> BoxedStrategy<AccountWithChange> {
         .prop_map(
             |(initial_balance, final_balance, address, initial_storage, new_storage)| {
                 let mut account = AccountWithChange::new(address);
+
+                let mut initial_empty = true;
+                let mut final_empty = true;
                 if let Some(initial_balance) = initial_balance {
-                    account = account.with_initial_state(initial_balance, 0, None);
+                    if initial_balance > 0 {
+                        account = account.with_initial_state(initial_balance, 0, None);
+                        initial_empty = false;
+                    }
                 }
                 if let Some(final_balance) = final_balance {
-                    account = account.with_balance_change(final_balance);
+                    if final_balance > 0 {
+                        account = account.with_balance_change(final_balance);
+                        final_empty = false;
+                    }
                 }
-                if !initial_storage.is_empty() {
+                if !initial_storage.is_empty() && !initial_empty {
                     account = account.with_initial_storage(initial_storage)
                 }
-                if !new_storage.is_empty() {
+                if !new_storage.is_empty() && !final_empty {
                     account = account.with_storage_change(new_storage)
                 }
                 account.with_account_status(AccountStatus::Changed)
