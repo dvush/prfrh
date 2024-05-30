@@ -118,7 +118,7 @@ impl ProofHashCalculator {
 
             let proof = proofs.get(&address).unwrap();
 
-            let storage_root = if proof.storage_proofs.is_empty() {
+            let storage_root = if storage_prefix_sets.is_empty() {
                 proof.storage_root
             } else {
                 let mut storage_hash_builder = HashBuilder::default();
@@ -131,7 +131,8 @@ impl ProofHashCalculator {
                         .storage_proofs
                         .iter()
                         .find(|p| &p.key.0 == slot)
-                        .unwrap();
+                        .cloned()
+                        .unwrap_or_default();
                     update_hash_builder_from_proof(
                         &mut storage_hash_builder,
                         &proof.proof,
@@ -250,7 +251,10 @@ fn update_hash_builder_from_proof(
 
             // Add current leaf node and supplied if any
             let mut leaves = Vec::new();
-            if &updated_key != key {
+            if &updated_key != key
+                && updated_key > hash_builder.key
+                && next.map_or(true, |n| &updated_key < n)
+            {
                 leaves.push((updated_key, &leaf.value));
             }
             if let Some(value) = &value {

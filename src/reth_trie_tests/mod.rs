@@ -1,4 +1,3 @@
-use crate::reth_trie_tests::utils::pretty_print_proof;
 use crate::ProofHashCalculator;
 use alloy_primitives::{address, keccak256, private::proptest, Address, B256, U256};
 use eyre::Context;
@@ -43,7 +42,7 @@ fn caching_root_hash_calc(
     let mut proofs = HashMap::new();
     for (address, keys) in proof_hash_calc.get_proofs_to_fetch() {
         let proof = state_provider.proof(address, &keys)?;
-        pretty_print_proof(&proof);
+        // pretty_print_proof(&proof);
         proofs.insert(address, proof);
     }
 
